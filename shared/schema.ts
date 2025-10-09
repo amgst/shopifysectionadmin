@@ -17,6 +17,10 @@ export const actions = pgTable("actions", {
   downloads: integer("downloads").notNull().default(0),
   isPremium: boolean("is_premium").notNull().default(false),
   thumbnail: text("thumbnail").notNull(),
+  // price in cents (integer) to avoid floating point issues in DB; client may treat as dollars
+  price: integer("price").notNull().default(0),
+  // external download URL for paid/free actions
+  downloadLink: text("download_link").notNull().default(''),
   filters: text("filters").array().notNull().default(sql`ARRAY[]::text[]`),
 });
 

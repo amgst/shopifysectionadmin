@@ -69,13 +69,25 @@ export default function ActionsPage() {
     setModalLoading(true)
     try {
       const db = getFirestore()
+      // normalize price: UI uses dollars (e.g. 9.99) but DB stores cents as integer
+      const normalized = { ...values } as Record<string, unknown>
+      if (typeof (values as any).price === 'number') {
+        normalized.price = Math.round(((values as any).price as number) * 100)
+      } else {
+        normalized.price = 0
+      }
+      if ((values as any).downloadLink) {
+        normalized.downloadLink = (values as any).downloadLink
+      } else {
+        normalized.downloadLink = ''
+      }
       if (selectedAction) {
-        await updateDoc(doc(db, 'sections', selectedAction.id), values as Record<string, unknown>)
-        setActions(prev => prev.map(a => (a.id === selectedAction.id ? { ...a, ...values } : a)))
+        await updateDoc(doc(db, 'sections', selectedAction.id), normalized)
+        setActions(prev => prev.map(a => (a.id === selectedAction.id ? { ...a, ...normalized } : a)))
         toast({ title: 'Updated', description: 'Action updated successfully.' })
       } else {
-        const docRef = await addDoc(collection(db, 'sections'), values as Record<string, unknown>)
-        setActions(prev => [{ id: docRef.id, ...(values as Record<string, unknown>) } as Action, ...prev])
+        const docRef = await addDoc(collection(db, 'sections'), normalized)
+        setActions(prev => [{ id: docRef.id, ...(normalized as Record<string, unknown>) } as Action, ...prev])
         toast({ title: 'Created', description: 'Action created successfully.' })
       }
       setIsModalVisible(false)
@@ -194,6 +206,30 @@ function ActionsTable({
       sorter: (a, b) => a.downloads - b.downloads,
       render: (downloads: number, record: Action) => (
         <Text data-testid={`text-downloads-${record.id}`}>{downloads.toLocaleString()}</Text>
+      ),
+    },
+    {
+      title: 'Price',
+      dataIndex: 'price',
+      key: 'price',
+      width: 120,
+      render: (price: number, record: Action) => {
+        // price stored as cents
+        const dollars = typeof price === 'number' ? price / 100 : 0
+        return <Text data-testid={`text-price-${record.id}`}>${dollars.toFixed(2)}</Text>
+      },
+    },
+    {
+      title: 'Download',
+      dataIndex: 'downloadLink',
+      key: 'downloadLink',
+      width: 160,
+      render: (downloadLink: string, record: Action) => (
+        downloadLink ? (
+          <a href={downloadLink} target="_blank" rel="noopener noreferrer" data-testid={`link-download-${record.id}`}>External</a>
+        ) : (
+          <Text type="secondary">—</Text>
+        )
       ),
     },
     {
