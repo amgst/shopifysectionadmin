@@ -1,15 +1,13 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
-
-  // use storage to perform CRUD operations on the storage interface
-  // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
+  // Option A: Client-side persistence only. Server does not use any storage.
+  // Health route to indicate no server storage backend
+  app.get("/api/health/storage", (_req, res) => {
+    res.json({ storage: "none", mode: "client" });
+  });
 
   const httpServer = createServer(app);
-
   return httpServer;
 }
