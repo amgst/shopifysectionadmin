@@ -30,6 +30,7 @@ export default function ActionModal({
         // convert stored cents to dollars for UI display
         price: (action as any).price ? ((action as any).price as number) / 100 : 0,
         downloadLink: (action as any).downloadLink || '',
+        demoLink: (action as any).demoLink || '',
         filters: action.filters || [],
       });
     } else if (visible) {
@@ -167,6 +168,17 @@ export default function ActionModal({
           <Input
             placeholder="https://example.com/download.zip"
             data-testid="input-download-link"
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="demoLink"
+          label="Demo Link"
+          rules={[{ type: 'url', message: 'Please enter a valid URL' }]}
+        >
+          <Input
+            placeholder="https://example.com/demo"
+            data-testid="input-demo-link"
           />
         </Form.Item>
 

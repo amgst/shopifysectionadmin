@@ -83,6 +83,26 @@ export default function ActionsTable({
       ),
     },
     {
+      title: 'Demo Link',
+      dataIndex: 'demoLink',
+      key: 'demoLink',
+      width: 100,
+      render: (demoLink: string, record: Action) => (
+        demoLink ? (
+          <Button 
+            type="link" 
+            href={demoLink} 
+            target="_blank" 
+            icon={<LinkOutlined />}
+            data-testid={`button-demo-link-${record.id}`}>
+            View Demo
+          </Button>
+        ) : (
+          <Text type="secondary" data-testid={`text-no-demo-link-${record.id}`}>N/A</Text>
+        )
+      ),
+    },
+    {
       title: 'Downloads',
       dataIndex: 'downloads',
       key: 'downloads',

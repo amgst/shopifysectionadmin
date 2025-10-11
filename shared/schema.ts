@@ -21,6 +21,7 @@ export const actions = pgTable("actions", {
   price: integer("price").notNull().default(0),
   // external download URL for paid/free actions
   downloadLink: text("download_link").notNull().default(''),
+  demoLink: text("demo_link").notNull().default(''),
   filters: text("filters").array().notNull().default(sql`ARRAY[]::text[]`),
 });
 
