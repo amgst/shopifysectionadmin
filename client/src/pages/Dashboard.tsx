@@ -6,7 +6,6 @@ import {
   FileImageOutlined 
 } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
 import type { Action } from '@shared/schema';
 import { toast } from '@/hooks/use-toast';
 
@@ -25,9 +24,12 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const db = getFirestore();
-        const snapshot = await getDocs(collection(db, 'sections'));
-        const actions = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Action[];
+        const res = await fetch('/api/sections');
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(errBody.message || `GET /api/sections failed (${res.status})`);
+        }
+        const actions = (await res.json()) as Action[];
         const totalActions = actions.length;
         const totalDownloads = actions.reduce((sum, a) => sum + (a.downloads ?? 0), 0);
         const premiumActions = actions.filter((a) => a.isPremium).length;
@@ -35,7 +37,7 @@ export default function Dashboard() {
         setMetrics({ totalActions, totalDownloads, premiumActions, freeActions });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
-        toast({ title: 'Firestore read failed', description: message, variant: 'destructive' });
+        toast({ title: 'Load failed', description: message, variant: 'destructive' });
       } finally {
         setLoading(false);
       }

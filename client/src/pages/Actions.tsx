@@ -3,7 +3,7 @@ import { Table, Button, Space, Input, Select, Tag, Image, Popconfirm, Typography
 import { EditOutlined, DeleteOutlined, PlusOutlined, SearchOutlined, CrownOutlined } from '@ant-design/icons';
 import type { Action } from '@shared/schema';
 import type { ColumnsType } from 'antd/es/table';
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore'
+
 import { toast } from '@/hooks/use-toast';
 import ActionModal from '@/components/ActionModal'
 import type { InsertAction } from '@shared/schema'
@@ -21,20 +21,16 @@ export default function ActionsPage() {
   useEffect(() => {
     const fetchActions = async () => {
       try {
-        console.log('Fetching data from Firebase...');
-        const db = getFirestore();
-        // Query the correct Firestore collection name
-        const actionsCollection = collection(db, 'sections');
-        const actionsSnapshot = await getDocs(actionsCollection);
-        const actionsList = actionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Action[];
+        const res = await fetch('/api/sections');
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(errBody.message || `GET /api/sections failed (${res.status})`);
+        }
+        const actionsList = (await res.json()) as Action[];
         setActions(actionsList);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
-        toast({
-          title: 'Firestore read failed',
-          description: message,
-          variant: 'destructive',
-        });
+        toast({ title: 'Load failed', description: message, variant: 'destructive' });
       } finally {
         setLoading(false);
       }
@@ -50,13 +46,16 @@ export default function ActionsPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const db = getFirestore()
-      await deleteDoc(doc(db, 'sections', id))
-      setActions(prev => prev.filter(a => a.id !== id))
-      toast({ title: 'Deleted', description: 'Action deleted successfully.' })
+      const res = await fetch(`/api/sections/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.message || `DELETE /api/sections/${id} failed (${res.status})`);
+      }
+      setActions(prev => prev.filter(a => a.id !== id));
+      toast({ title: 'Deleted', description: 'Action deleted successfully.' });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err)
-      toast({ title: 'Delete failed', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: 'Delete failed', description: message, variant: 'destructive' });
     }
   };
 
@@ -66,37 +65,55 @@ export default function ActionsPage() {
   };
 
   const handleSubmit = async (values: InsertAction) => {
-    setModalLoading(true)
+    setModalLoading(true);
     try {
-      const db = getFirestore()
-      // normalize price: UI uses dollars (e.g. 9.99) but DB stores cents as integer
-      const normalized = { ...values } as Record<string, unknown>
+      const normalized = { ...values } as Record<string, unknown>;
       if (typeof (values as any).price === 'number') {
-        normalized.price = Math.round(((values as any).price as number) * 100)
+        normalized.price = Math.round(((values as any).price as number) * 100);
       } else {
-        normalized.price = 0
+        normalized.price = 0;
       }
       if ((values as any).downloadLink) {
-        normalized.downloadLink = (values as any).downloadLink
+        normalized.downloadLink = (values as any).downloadLink;
       } else {
-        normalized.downloadLink = ''
+        normalized.downloadLink = '';
       }
+
+      let res: Response;
       if (selectedAction) {
-        await updateDoc(doc(db, 'sections', selectedAction.id), normalized)
-        setActions(prev => prev.map(a => (a.id === selectedAction.id ? { ...a, ...normalized } : a)))
-        toast({ title: 'Updated', description: 'Action updated successfully.' })
+        res = await fetch(`/api/sections/${selectedAction.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(normalized),
+        });
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(errBody.message || `PUT /api/sections/${selectedAction.id} failed (${res.status})`);
+        }
+        const updated = (await res.json()) as Action;
+        setActions(prev => prev.map(a => (a.id === updated.id ? updated : a)));
+        toast({ title: 'Updated', description: 'Action updated successfully.' });
       } else {
-        const docRef = await addDoc(collection(db, 'sections'), normalized)
-        setActions(prev => [{ id: docRef.id, ...(normalized as Record<string, unknown>) } as Action, ...prev])
-        toast({ title: 'Created', description: 'Action created successfully.' })
+        res = await fetch('/api/sections', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(normalized),
+        });
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(errBody.message || `POST /api/sections failed (${res.status})`);
+        }
+        const created = (await res.json()) as Action;
+        setActions(prev => [created, ...prev]);
+        toast({ title: 'Created', description: 'Action created successfully.' });
       }
-      setIsModalVisible(false)
-      setSelectedAction(null)
+      setIsModalVisible(false);
+      setSelectedAction(null);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err)
-      toast({ title: 'Save failed', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: 'Save failed', description: message, variant: 'destructive' });
     } finally {
-      setModalLoading(false)
+      setModalLoading(false);
     }
   }
 
